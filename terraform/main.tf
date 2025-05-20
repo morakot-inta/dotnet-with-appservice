@@ -96,3 +96,42 @@ resource "azurerm_application_insights" "this" {
     project     = local.project
   }
 }
+
+resource "azurerm_mssql_server" "this" {
+  name                         = "${local.project}-sql-${random_string.this.result}"
+  resource_group_name          = azurerm_resource_group.this.name 
+  location                     = azurerm_resource_group.this.location 
+  version                      = "12.0"
+  administrator_login          = "sqladmin"
+  administrator_login_password = "P@ssw0rd1234!"
+  
+  tags = {
+    environment = "production"
+    project     = local.project
+  }
+}
+
+# MSSQL Database for testing (low spec)
+resource "azurerm_mssql_database" "test" {
+  name                        = "${local.project}-testdb"
+  server_id                   = azurerm_mssql_server.this.id
+  collation                   = "SQL_Latin1_General_CP1_CI_AS"
+  max_size_gb                 = 2
+  read_scale                  = false
+  sku_name                    = "Basic"
+  zone_redundant              = false
+  
+  tags = {
+    environment = "test"
+    project     = local.project
+    purpose     = "testing"
+  }
+}
+
+# Allow Azure services to access the SQL server
+resource "azurerm_mssql_firewall_rule" "allow_azure_services" {
+  name                = "AllowAzureServices"
+  server_id           = azurerm_mssql_server.this.id
+  start_ip_address    = "0.0.0.0"
+  end_ip_address      = "0.0.0.0"
+}
